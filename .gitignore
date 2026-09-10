@@ -1,0 +1,39 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+client_secret*.json
+credentials*.json
+service-account*.json
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+*.egg-info/
+
+# Local source documents and generated ingestion artifacts
+/output/
+
+# Build and coverage output
+build/
+dist/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+/evaluation/results/
+
+# Runtime logs
+*.log
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
