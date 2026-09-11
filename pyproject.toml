@@ -10,8 +10,13 @@ dependencies = [
     "docling>=2.126.0",
     "docling-core[chunking-openai]>=2.95.0",
     "fastapi[standard]>=0.141.1",
+    "httpx>=0.28.1",
     "openai>=3.11.0",
     "pgvector>=0.5.0",
+    "pwdlib[argon2]>=0.3.1",
+    "pyjwt>=2.13.0",
     "sqlalchemy>=2.0.52",
+    "streamlit>=1.63.0",
     "uvicorn>=0.52.4",
 ]
+files = ["backend", "frontend", "scripts"]

@@ -34,7 +34,7 @@ async def main() -> None:
     async with SessionLocal() as session:
         result = await ingest_document(
             session,
-            owner_id=UUID("00000000-0000-0000-0000-000000000000"),
+            owner_id=UUID("8212e6f0-dfaf-48ce-a5cd-0ee4d3999eca"),
             thread_id=None,
             filename=filename,
             mime_type="application/pdf",
@@ -43,7 +43,7 @@ async def main() -> None:
             embedding_provider=provider,  # Replace with your actual embedding provider
         )
 
-
+    print(f"Document ingested successfully: {result}")
     await engine.dispose()
 
 

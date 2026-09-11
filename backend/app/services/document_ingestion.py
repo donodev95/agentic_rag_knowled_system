@@ -1,8 +1,4 @@
-
-
-
 from dataclasses import dataclass
-import json, os
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -25,15 +21,12 @@ from backend.app.utils.tools import save_json
 @dataclass(frozen=True, slots=True)
 class IngestionResult:
     """Document ingestion result including owner-scoped duplicate state."""
-
     document: Document
     duplicate: bool
     chunks_created: int
 
-
 class IngestionUnavailableError(ValueError):
     """Raised after an indexing failure has been recorded durably."""
-    
 
 async def ingest_document(
     session: AsyncSession,
@@ -75,7 +68,7 @@ async def ingest_document(
     metadata.update({"page_count": len(docling_document.pages), "file_extension": extension})
     
     document = Document(
-        # owner_id=owner_id,
+        owner_id=owner_id,
         # thread_id=thread_id,
         original_filename=safe_filename,
         display_name=(display_name or safe_filename)[:255],
@@ -133,22 +126,20 @@ async def ingest_document(
         )
     # # ----------------- 6. Storing Ingestion Job -----------------
     try:
-        await session.flush()
+        await session.flush() # sends pending SQL statements to the database without committing the transaction.
         job = IngestionJob(
             document_id=document.id,
             # owner_id=owner_id,
             status=IngestionJobStatus.RUNNING,
             details_json={"chunks": len(raw_chunks)},
         )
-        session.add(job)
-        # This boundary makes the running job observable to concurrent dashboard requests and
-        # ensures a later provider failure cannot roll the job record away.
-        await session.commit()
+        session.add(job) # Put the job into SqlAlchemy's session, but it won't be in the database until we commit.
+        await session.commit() # the ingestion_job row is now durably stored in the database with status RUNNING.
     except IntegrityError:
         await session.rollback()
         # duplicate = await find_document_by_hash(session, owner_id, document_hash)
         duplicate = None
-        if duplicate is not None:
+        if duplicate is not None: # Race condition: another ingestion job for the same document hash was created after we checked for duplicates but before we committed our own ingestion job.
             return IngestionResult(duplicate, duplicate=True, chunks_created=0)
         raise
     
@@ -172,6 +163,7 @@ async def ingest_document(
         db_chunks = [
             DocumentChunk(
                 document_id=document.id,
+                owner_id=owner_id,
                 chunk_index=chunk.chunk_index,
                 page_number=chunk.page_number,
                 section_title=chunk.section_title,
@@ -203,26 +195,20 @@ async def ingest_document(
 
     except Exception as exc:
         await session.rollback()
-
         failed_document = await session.get(
             Document,
             document.id,
         )
-
         failed_job = await session.get(
             IngestionJob,
             job.id,
         )
-
         if failed_document is not None:
             failed_document.status = DocumentStatus.FAILED
-
         if failed_job is not None:
             failed_job.status = IngestionJobStatus.FAILED
             failed_job.error_message = "Document indexing failed"
-
         await session.commit()
-
         raise IngestionUnavailableError(
             "Document indexing failed"
         ) from exc

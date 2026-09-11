@@ -15,7 +15,7 @@ class DocumentPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    thread_id: UUID | None
+    # thread_id: UUID | None
     original_filename: str
     display_name: str
     mime_type: str
