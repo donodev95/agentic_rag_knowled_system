@@ -32,7 +32,7 @@ async def ingest_document(
     session: AsyncSession,
     *,
     owner_id: UUID,
-    thread_id: UUID | None,
+    thread_id: UUID,
     filename: str,
     mime_type: str,
     data: bytes,

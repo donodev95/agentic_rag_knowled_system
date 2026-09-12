@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from backend.app.agents.checkpoints import create_checkpointer
-from backend.app.api import auth, chat, documents, health, threads, users
+from backend.app.api import auth, chat, documents, health, metrics, threads, users
 from backend.app.core.config import Settings, get_settings
 from backend.app.core.errors import register_exception_handlers
 from backend.app.core.logging import configure_logging
@@ -48,7 +48,7 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     # application.include_router(data_sources.router, prefix=API_PREFIX)
     # application.include_router(retrieval.router, prefix=API_PREFIX)
     application.include_router(chat.router, prefix=API_PREFIX)
-    # application.include_router(metrics.router, prefix=API_PREFIX)
+    application.include_router(metrics.router, prefix=API_PREFIX)
     return application
 
 

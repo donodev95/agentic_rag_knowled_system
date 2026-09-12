@@ -1,8 +1,8 @@
 """create tables
 
-Revision ID: 54dd3ead6ba8
+Revision ID: 0ab58e9ab08d
 Revises: 
-Create Date: 2026-09-11 20:27:48.161810
+Create Date: 2026-09-12 14:36:16.119952
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ from pgvector.sqlalchemy import VECTOR
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '54dd3ead6ba8'
+revision: str = '0ab58e9ab08d'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -65,6 +65,20 @@ def upgrade() -> None:
     op.create_index('ix_documents_metadata_gin', 'documents', ['metadata_json'], unique=False, postgresql_using='gin')
     op.create_index('ix_documents_owner_created', 'documents', ['owner_id', 'created_at'], unique=False)
     op.create_index('ix_documents_thread_created', 'documents', ['thread_id', 'created_at'], unique=False)
+    op.create_table('messages',
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.Column('thread_id', sa.Uuid(), nullable=False),
+    sa.Column('owner_id', sa.Uuid(), nullable=False),
+    sa.Column('role', sa.Enum('USER', 'ASSISTANT', 'SYSTEM', name='message_role', native_enum=False, length=20), nullable=False),
+    sa.Column('content', sa.Text(), nullable=False),
+    sa.Column('sources', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+    sa.ForeignKeyConstraint(['owner_id'], ['users.id'], name=op.f('fk_messages_owner_id_users'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['thread_id'], ['conversation_threads.id'], name=op.f('fk_messages_thread_id_conversation_threads'), ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_messages'))
+    )
+    op.create_index('ix_messages_thread_created', 'messages', ['thread_id', 'created_at'], unique=False)
     op.create_table('document_chunks',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('document_id', sa.Uuid(), nullable=False),
@@ -117,6 +131,8 @@ def downgrade() -> None:
     op.drop_index('ix_chunks_embedding_hnsw', table_name='document_chunks', postgresql_using='hnsw', postgresql_ops={'embedding': 'vector_cosine_ops'})
     op.drop_index('ix_chunks_document_index', table_name='document_chunks')
     op.drop_table('document_chunks')
+    op.drop_index('ix_messages_thread_created', table_name='messages')
+    op.drop_table('messages')
     op.drop_index('ix_documents_thread_created', table_name='documents')
     op.drop_index('ix_documents_owner_created', table_name='documents')
     op.drop_index('ix_documents_metadata_gin', table_name='documents', postgresql_using='gin')
