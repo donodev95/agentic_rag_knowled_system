@@ -20,7 +20,7 @@ class PreparedChunk:
 
 
 def hash_text(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return str(hashlib.sha256(text.encode("utf-8")).hexdigest())
 
 
 def get_page_number(chunk) -> int | None:

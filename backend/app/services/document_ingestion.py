@@ -55,9 +55,12 @@ async def ingest_document(
     docling_document = convert_document(extension, filename, data, settings.enable_ocr)
     
     # ----------------- 3. Deduplicate Document -----------------
-    document_hash = docling_document.export_to_dict().get("origin", {}).get("binary_hash", None)
-    # duplicate = await find_document_by_hash(session, owner_id, document_hash)
-    duplicate = None
+    binary_hash = docling_document.export_to_dict().get("origin", {}).get("binary_hash")
+    if binary_hash is None:
+        raise ValueError("Document origin is missing binary_hash")
+
+    document_hash = str(binary_hash)
+    duplicate = await find_document_by_hash(session, owner_id, document_hash)
     if duplicate is not None:
         return IngestionResult(duplicate, duplicate=True, chunks_created=0)
         
@@ -69,7 +72,7 @@ async def ingest_document(
     
     document = Document(
         owner_id=owner_id,
-        # thread_id=thread_id,
+        thread_id=thread_id,
         original_filename=safe_filename,
         display_name=(display_name or safe_filename)[:255],
         mime_type=(stored_mime_type or mime_type).lower(),
@@ -129,7 +132,7 @@ async def ingest_document(
         await session.flush() # sends pending SQL statements to the database without committing the transaction.
         job = IngestionJob(
             document_id=document.id,
-            # owner_id=owner_id,
+            owner_id=owner_id,
             status=IngestionJobStatus.RUNNING,
             details_json={"chunks": len(raw_chunks)},
         )
@@ -137,8 +140,7 @@ async def ingest_document(
         await session.commit() # the ingestion_job row is now durably stored in the database with status RUNNING.
     except IntegrityError:
         await session.rollback()
-        # duplicate = await find_document_by_hash(session, owner_id, document_hash)
-        duplicate = None
+        duplicate = await find_document_by_hash(session, owner_id, document_hash)
         if duplicate is not None: # Race condition: another ingestion job for the same document hash was created after we checked for duplicates but before we committed our own ingestion job.
             return IngestionResult(duplicate, duplicate=True, chunks_created=0)
         raise

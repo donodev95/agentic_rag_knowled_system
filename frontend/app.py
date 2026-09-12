@@ -126,87 +126,87 @@ def render_health(client: APIClient) -> None:
         st.error("One or more required services are unavailable.")
 
 
-# def render_knowledge_base(client: APIClient, threads: list[dict[str, Any]]) -> None:
-#     """Manage uploads and inspect owner-scoped PostgreSQL document state."""
-#     st.subheader("Knowledge base")
-#     st.caption("Uploads are validated, chunked, embedded, and stored in PostgreSQL with pgvector.")
-#     with st.container(border=True):
-#         heading, action = st.columns([4, 1])
-#         heading.markdown("#### Google Drive folder")
-#         heading.caption(
-#             "Synchronize supported business documents from the folder configured by the server. "
-#             "Unchanged files are skipped and duplicate content reuses the existing index."
-#         )
-#         if action.button("Sync now", type="primary", use_container_width=True):
-#             try:
-#                 with st.spinner("Discovering, parsing, and embedding Drive documents..."):
-#                     st.session_state.drive_sync_summary = client.sync_google_drive()
-#                 st.rerun()
-#             except APIError as exc:
-#                 st.error(str(exc))
-#         if summary := st.session_state.get("drive_sync_summary"):
-#             columns = st.columns(6)
-#             for column, label, key in zip(
-#                 columns,
-#                 ("Discovered", "Indexed", "Unchanged", "Duplicates", "Skipped", "Failed"),
-#                 ("discovered", "indexed", "unchanged", "duplicates", "skipped", "failed"),
-#                 strict=True,
-#             ):
-#                 column.metric(label, int(summary[key]))
+def render_knowledge_base(client: APIClient, threads: list[dict[str, Any]]) -> None:
+    """Manage uploads and inspect owner-scoped PostgreSQL document state."""
+    st.subheader("Knowledge base")
+    st.caption("Uploads are validated, chunked, embedded, and stored in PostgreSQL with pgvector.")
+    with st.container(border=True):
+        heading, action = st.columns([4, 1])
+        heading.markdown("#### Google Drive folder")
+        heading.caption(
+            "Synchronize supported business documents from the folder configured by the server. "
+            "Unchanged files are skipped and duplicate content reuses the existing index."
+        )
+        if action.button("Sync now", type="primary", use_container_width=True):
+            try:
+                with st.spinner("Discovering, parsing, and embedding Drive documents..."):
+                    st.session_state.drive_sync_summary = client.sync_google_drive()
+                st.rerun()
+            except APIError as exc:
+                st.error(str(exc))
+        if summary := st.session_state.get("drive_sync_summary"):
+            columns = st.columns(6)
+            for column, label, key in zip(
+                columns,
+                ("Discovered", "Indexed", "Unchanged", "Duplicates", "Skipped", "Failed"),
+                ("discovered", "indexed", "unchanged", "duplicates", "skipped", "failed"),
+                strict=True,
+            ):
+                column.metric(label, int(summary[key]))
 
-#     st.markdown("#### Upload a document")
-#     thread_options = {"All conversations": ""} | {
-#         f"{thread['title']} · {str(thread['id'])[:8]}": str(thread["id"]) for thread in threads
-#     }
-#     with st.form("upload_document"):
-#         uploaded = st.file_uploader("Document", type=["pdf", "docx", "txt"])
-#         scope = st.selectbox("Conversation scope", options=list(thread_options))
-#         submitted = st.form_submit_button("Upload and index", type="primary")
-#         if submitted and uploaded is not None:
-#             try:
-#                 result = client.upload(
-#                     uploaded.name,
-#                     uploaded.getvalue(),
-#                     uploaded.type or "application/octet-stream",
-#                     thread_options[scope],
-#                 )
-#                 if result["duplicate"]:
-#                     st.info("This document is already indexed for your account.")
-#                 else:
-#                     st.success(f"Indexed {result['chunks_created']} chunks from {uploaded.name}.")
-#                     st.rerun()
-#             except APIError as exc:
-#                 st.error(str(exc))
-#     documents = client.documents()
-#     if not documents:
-#         st.info("No documents are indexed yet.")
-#         return
-#     st.markdown("#### Indexed documents")
-#     for document in documents:
-#         name, status, size, action = st.columns([4, 2, 2, 1])
-#         name.write(document["display_name"])
-#         status.write(str(document["status"]).title())
-#         size.write(format_bytes(int(document["file_size"])))
-#         if action.button("Delete", key=f"delete-{document['id']}"):
-#             try:
-#                 client.delete_document(str(document["id"]))
-#                 st.rerun()
-#             except APIError as exc:
-#                 st.error(str(exc))
-
-
-# def render_sources(sources: list[dict[str, Any]]) -> None:
-#     """Render server-validated citations under an assistant response."""
-#     if not sources:
-#         return
-#     with st.expander(f"Sources ({len(sources)})"):
-#         for source in sources:
-#             page = f", page {source['page_number']}" if source.get("page_number") else ""
-#             st.markdown(f"**{source['document_name']}**{page} · similarity {source['score']:.2f}")
-#             st.caption(str(source["excerpt"]))
+    st.markdown("#### Upload a document")
+    thread_options = {"All conversations": ""} | {
+        f"{thread['title']} · {str(thread['id'])[:8]}": str(thread["id"]) for thread in threads
+    }
+    with st.form("upload_document"):
+        uploaded = st.file_uploader("Document", type=["pdf", "docx", "txt"])
+        scope = st.selectbox("Conversation scope", options=list(thread_options))
+        submitted = st.form_submit_button("Upload and index", type="primary")
+        if submitted and uploaded is not None:
+            try:
+                result = client.upload(
+                    uploaded.name,
+                    uploaded.getvalue(),
+                    uploaded.type or "application/octet-stream",
+                    thread_options[scope],
+                )
+                if result["duplicate"]:
+                    st.info("This document is already indexed for your account.")
+                else:
+                    st.success(f"Indexed {result['chunks_created']} chunks from {uploaded.name}.")
+                    st.rerun()
+            except APIError as exc:
+                st.error(str(exc))
+    documents = client.documents()
+    if not documents:
+        st.info("No documents are indexed yet.")
+        return
+    st.markdown("#### Indexed documents")
+    for document in documents:
+        name, status, size, action = st.columns([4, 2, 2, 1])
+        name.write(document["display_name"])
+        status.write(str(document["status"]).title())
+        size.write(format_bytes(int(document["file_size"])))
+        if action.button("Delete", key=f"delete-{document['id']}"):
+            try:
+                client.delete_document(str(document["id"]))
+                st.rerun()
+            except APIError as exc:
+                st.error(str(exc))
 
 
-# def render_agent(client: APIClient, threads: list[dict[str, Any]]) -> None:
+def render_sources(sources: list[dict[str, Any]]) -> None:
+    """Render server-validated citations under an assistant response."""
+    if not sources:
+        return
+    with st.expander(f"Sources ({len(sources)})"):
+        for source in sources:
+            page = f", page {source['page_number']}" if source.get("page_number") else ""
+            st.markdown(f"**{source['document_name']}**{page} · similarity {source['score']:.2f}")
+            st.caption(str(source["excerpt"]))
+
+
+def render_agent(client: APIClient, threads: list[dict[str, Any]]) -> None:
     """Render persisted thread selection and grounded chat."""
     st.subheader("AI agent")
     if not threads:
@@ -292,12 +292,12 @@ def main() -> None:
         )
         with overview:
             render_overview(client)
-        # with health:
-        #     render_health(client)
-        # with knowledge:
-        #     render_knowledge_base(client, threads)
-        # with agent:
-        #     render_agent(client, threads)
+        with health:
+            render_health(client)
+        with knowledge:
+            render_knowledge_base(client, threads)
+        with agent:
+            render_agent(client, threads)
     except APIError as exc:
         st.error(str(exc))
 

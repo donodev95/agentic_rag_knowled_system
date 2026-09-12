@@ -22,8 +22,8 @@ class DocumentChunk(Base):
         # 1. No duplicated chunks (same hash value) for the same document_id
         UniqueConstraint("document_id", "content_hash", name="uq_chunks_document_content_hash"), 
         
-        # # 2. Create composite B-tree index for owner_id and thread_id for faster retrieval, so that we can query all chunks for a given owner and thread efficiently without having to scan the entire table. This is useful for retrieving all chunks for a specific owner and thread.
-        # Index("ix_chunks_owner_thread", "owner_id", "thread_id"),
+        # 2. Create composite B-tree index for owner_id and thread_id for faster retrieval, so that we can query all chunks for a given owner and thread efficiently without having to scan the entire table. This is useful for retrieving all chunks for a specific owner and thread.
+        Index("ix_chunks_owner_thread", "owner_id", "thread_id"),
         
         # 3. Given the specific document, every chunks has to have a unique chunk_index
         Index("ix_chunks_document_index", "document_id", "chunk_index", unique=True),
@@ -47,11 +47,11 @@ class DocumentChunk(Base):
     owner_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    # thread_id: Mapped[UUID | None] = mapped_column(
-    #     Uuid(as_uuid=True),
-    #     ForeignKey("conversation_threads.id", ondelete="CASCADE"),
-    #     nullable=True,
-    # )
+    thread_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("conversation_threads.id", ondelete="CASCADE"),
+        nullable=True,
+    )
     chunk_index: Mapped[int] = mapped_column(nullable=False)
     page_number: Mapped[int | None] = mapped_column(nullable=True)
     section_title: Mapped[str | None] = mapped_column(String(500), nullable=True)

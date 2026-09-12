@@ -28,8 +28,8 @@ class Document(TimestampMixin, Base):
         UniqueConstraint("owner_id", "content_hash", name="uq_documents_owner_content_hash"),
         # 2. Index on owner_id and created_at for faster retrieval
         Index("ix_documents_owner_created", "owner_id", "created_at"),
-        # # 3. Index on thread_id and created_at for faster retrieval
-        # Index("ix_documents_thread_created", "thread_id", "created_at"),
+        # 3. Index on thread_id and created_at for faster retrieval
+        Index("ix_documents_thread_created", "thread_id", "created_at"),
         # # 4. Gin index on metadata_json for effective retrieval
         Index("ix_documents_metadata_gin", "metadata_json", postgresql_using="gin"),
     )
@@ -38,11 +38,11 @@ class Document(TimestampMixin, Base):
     owner_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    # thread_id: Mapped[UUID | None] = mapped_column(
-    #     Uuid(as_uuid=True),
-    #     ForeignKey("conversation_threads.id", ondelete="CASCADE"),
-    #     nullable=True,
-    # )
+    thread_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("conversation_threads.id", ondelete="CASCADE"),
+        nullable=True,
+    )
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)

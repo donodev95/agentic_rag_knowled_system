@@ -43,7 +43,8 @@ async def get_current_user(
         message="Authentication credentials are invalid or expired",
     )
     try:
-        claims = decode_access_token(token, settings) 
+        claims = decode_access_token(token, settings)
+        print(f"Decoded claims: {claims}")
         """
         decode_access_token extracts the following claims from the JWT token:{
             "user_id": claims.user_id,

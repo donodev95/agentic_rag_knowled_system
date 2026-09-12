@@ -1,8 +1,8 @@
 """create tables
 
-Revision ID: d9fe2f4b028f
+Revision ID: 54dd3ead6ba8
 Revises: 
-Create Date: 2026-09-11 14:09:38.761472
+Create Date: 2026-09-11 20:27:48.161810
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ from pgvector.sqlalchemy import VECTOR
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'd9fe2f4b028f'
+revision: str = '54dd3ead6ba8'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -34,9 +34,20 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
+    op.create_table('conversation_threads',
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.Column('owner_id', sa.Uuid(), nullable=False),
+    sa.Column('title', sa.String(length=200), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+    sa.ForeignKeyConstraint(['owner_id'], ['users.id'], name=op.f('fk_conversation_threads_owner_id_users'), ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_conversation_threads'))
+    )
+    op.create_index('ix_conversation_threads_owner_created', 'conversation_threads', ['owner_id', 'created_at'], unique=False)
     op.create_table('documents',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('owner_id', sa.Uuid(), nullable=False),
+    sa.Column('thread_id', sa.Uuid(), nullable=True),
     sa.Column('original_filename', sa.String(length=255), nullable=False),
     sa.Column('display_name', sa.String(length=255), nullable=False),
     sa.Column('mime_type', sa.String(length=100), nullable=False),
@@ -47,15 +58,18 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['owner_id'], ['users.id'], name=op.f('fk_documents_owner_id_users'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['thread_id'], ['conversation_threads.id'], name=op.f('fk_documents_thread_id_conversation_threads'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_documents')),
     sa.UniqueConstraint('owner_id', 'content_hash', name='uq_documents_owner_content_hash')
     )
     op.create_index('ix_documents_metadata_gin', 'documents', ['metadata_json'], unique=False, postgresql_using='gin')
     op.create_index('ix_documents_owner_created', 'documents', ['owner_id', 'created_at'], unique=False)
+    op.create_index('ix_documents_thread_created', 'documents', ['thread_id', 'created_at'], unique=False)
     op.create_table('document_chunks',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('document_id', sa.Uuid(), nullable=False),
     sa.Column('owner_id', sa.Uuid(), nullable=False),
+    sa.Column('thread_id', sa.Uuid(), nullable=True),
     sa.Column('chunk_index', sa.Integer(), nullable=False),
     sa.Column('page_number', sa.Integer(), nullable=True),
     sa.Column('section_title', sa.String(length=500), nullable=True),
@@ -68,37 +82,47 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['document_id'], ['documents.id'], name=op.f('fk_document_chunks_document_id_documents'), ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['owner_id'], ['users.id'], name=op.f('fk_document_chunks_owner_id_users'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['thread_id'], ['conversation_threads.id'], name=op.f('fk_document_chunks_thread_id_conversation_threads'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_document_chunks')),
     sa.UniqueConstraint('document_id', 'content_hash', name='uq_chunks_document_content_hash')
     )
     op.create_index('ix_chunks_document_index', 'document_chunks', ['document_id', 'chunk_index'], unique=True)
     op.create_index('ix_chunks_embedding_hnsw', 'document_chunks', ['embedding'], unique=False, postgresql_using='hnsw', postgresql_ops={'embedding': 'vector_cosine_ops'})
     op.create_index('ix_chunks_metadata_gin', 'document_chunks', ['metadata_json'], unique=False, postgresql_using='gin')
+    op.create_index('ix_chunks_owner_thread', 'document_chunks', ['owner_id', 'thread_id'], unique=False)
     op.create_table('ingestion_jobs',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('document_id', sa.Uuid(), nullable=False),
+    sa.Column('owner_id', sa.Uuid(), nullable=False),
     sa.Column('status', sa.Enum('pending', 'running', 'completed', 'failed', name='ingestion_job_status', native_enum=False), nullable=False),
     sa.Column('error_message', sa.Text(), nullable=True),
     sa.Column('details_json', sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), 'postgresql'), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['document_id'], ['documents.id'], name=op.f('fk_ingestion_jobs_document_id_documents'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['owner_id'], ['users.id'], name=op.f('fk_ingestion_jobs_owner_id_users'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_ingestion_jobs'))
     )
+    op.create_index('ix_ingestion_jobs_owner_created', 'ingestion_jobs', ['owner_id', 'created_at'], unique=False)
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_index('ix_ingestion_jobs_owner_created', table_name='ingestion_jobs')
     op.drop_table('ingestion_jobs')
+    op.drop_index('ix_chunks_owner_thread', table_name='document_chunks')
     op.drop_index('ix_chunks_metadata_gin', table_name='document_chunks', postgresql_using='gin')
     op.drop_index('ix_chunks_embedding_hnsw', table_name='document_chunks', postgresql_using='hnsw', postgresql_ops={'embedding': 'vector_cosine_ops'})
     op.drop_index('ix_chunks_document_index', table_name='document_chunks')
     op.drop_table('document_chunks')
+    op.drop_index('ix_documents_thread_created', table_name='documents')
     op.drop_index('ix_documents_owner_created', table_name='documents')
     op.drop_index('ix_documents_metadata_gin', table_name='documents', postgresql_using='gin')
     op.drop_table('documents')
+    op.drop_index('ix_conversation_threads_owner_created', table_name='conversation_threads')
+    op.drop_table('conversation_threads')
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')

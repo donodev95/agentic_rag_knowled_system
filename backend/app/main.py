@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from backend.app.api import auth, documents, health, users
+from backend.app.agents.checkpoints import create_checkpointer
+from backend.app.api import auth, chat, documents, health, threads, users
 from backend.app.core.config import Settings, get_settings
 from backend.app.core.errors import register_exception_handlers
 from backend.app.core.logging import configure_logging
@@ -23,8 +24,8 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
         app.state.settings = settings
         app.state.database = Database(settings.database_url)
         try:
-            # async with create_checkpointer(settings) as checkpointer:
-            #     app.state.checkpointer = checkpointer
+            async with create_checkpointer(settings) as checkpointer:
+                app.state.checkpointer = checkpointer
                 yield
         finally:
             await app.state.database.close()
@@ -42,11 +43,11 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     application.include_router(health.router)
     application.include_router(auth.router, prefix=API_PREFIX)
     application.include_router(users.router, prefix=API_PREFIX)
-    # application.include_router(threads.router, prefix=API_PREFIX)
+    application.include_router(threads.router, prefix=API_PREFIX)
     application.include_router(documents.router, prefix=API_PREFIX)
     # application.include_router(data_sources.router, prefix=API_PREFIX)
     # application.include_router(retrieval.router, prefix=API_PREFIX)
-    # application.include_router(chat.router, prefix=API_PREFIX)
+    application.include_router(chat.router, prefix=API_PREFIX)
     # application.include_router(metrics.router, prefix=API_PREFIX)
     return application
 

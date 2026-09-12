@@ -34,7 +34,7 @@ async def main() -> None:
     async with SessionLocal() as session:
         result = await ingest_document(
             session,
-            owner_id=UUID("8212e6f0-dfaf-48ce-a5cd-0ee4d3999eca"),
+            owner_id=UUID("32718d0e-dff0-4860-b094-9e790bc412e4"),
             thread_id=None,
             filename=filename,
             mime_type="application/pdf",

@@ -24,15 +24,15 @@ class IngestionJob(TimestampMixin, Base):
     """Observable ingestion attempt for one authorized document."""
 
     __tablename__ = "ingestion_jobs"
-    # __table_args__ = (Index("ix_ingestion_jobs_owner_created", "owner_id", "created_at"),)
+    __table_args__ = (Index("ix_ingestion_jobs_owner_created", "owner_id", "created_at"),)
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     document_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
     )
-    # owner_id: Mapped[UUID] = mapped_column(
-    #     Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    # )
+    owner_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     status: Mapped[IngestionJobStatus] = mapped_column(
         Enum(
             IngestionJobStatus,
