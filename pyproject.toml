@@ -13,6 +13,7 @@ dependencies = [
     "httpx>=0.28.1",
     "langgraph>=1.2.11",
     "langgraph-checkpoint-postgres>=3.1.2",
+    "mcp[cli]>=2.2.0",
     "openai>=3.11.0",
     "pgvector>=0.5.0",
     "psycopg[binary]>=3.3.5",
